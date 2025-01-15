@@ -1,15 +1,15 @@
 import os
 import re
 from typing import Tuple
-
 import requests
 import json
 import time
-
 import aiohttp
 import discord
 from dotenv import load_dotenv
 import emoji
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 
 
 # functions
@@ -36,9 +36,9 @@ def remove_emojis(content: str) -> Tuple[str, list[emoji.EmojiMatch], list[int]]
     Remove emojis from the given text and store the info about emoji for future use.
     Return text without emojis.
     """
-    emojis = list(emoji.analyze(content))               # get all emojis from the text
-    emoji_matches = [item[1] for item in emojis]        # EmojiMatch objects
-    positions = [emoji_match.start for emoji_match in emoji_matches]    # indices of emojis in the text
+    emojis = list(emoji.analyze(content))  # get all emojis from the text
+    emoji_matches = [item[1] for item in emojis]  # EmojiMatch objects
+    positions = [emoji_match.start for emoji_match in emoji_matches]  # indices of emojis in the text
     content_without_emojis = ""
     for i in range(len(content)):
         if i not in positions:
@@ -99,7 +99,7 @@ async def on_message(message):
         # diacritics api cannot handle emojis, so they have to be returned and then inserted again
         content, emoji_matches, positions = remove_emojis(message.content)
 
-        if len(content) >= 1000:            # handle too long texts for the diacritics api takes max. 1000 chars
+        if len(content) >= 1000:  # handle too long texts for the diacritics api takes max. 1000 chars
             parts = []
             while len(content) >= 1000:
                 # a bit more clever split looking for approximately the end of a sentence
@@ -111,7 +111,7 @@ async def on_message(message):
             text_with_diacritics = ""
             for part in parts:
                 text_with_diacritics += (get_text_with_diacritics(part))
-                time.sleep(0.5)   # without the pause, we get an error arising from too many requests
+                time.sleep(0.5)  # without the pause, we get an error arising from too many requests
         else:
             text_with_diacritics = get_text_with_diacritics(content)
 
@@ -122,4 +122,25 @@ async def on_message(message):
         await message.channel.send(response)
 
 
-client.run(TOKEN)
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+
+def run_health_check_server():
+    server_address = ('', 8080)
+    httpd = HTTPServer(server_address, HealthCheckHandler)
+    httpd.serve_forever()
+
+
+if __name__ == '__main__':
+    # Start health check server in a separate thread
+    health_check_thread = threading.Thread(target=run_health_check_server)
+    health_check_thread.daemon = True
+    health_check_thread.start()
+
+    # Run the Discord bot
+    client.run(TOKEN)
