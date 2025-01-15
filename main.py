@@ -131,7 +131,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
 
 
 def run_health_check_server():
-    server_address = ('', 8080)
+    server_address = ('', 8000)
     httpd = HTTPServer(server_address, HealthCheckHandler)
     httpd.serve_forever()
 
