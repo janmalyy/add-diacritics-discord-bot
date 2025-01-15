@@ -16,8 +16,8 @@ RUN pip install --upgrade pip && \
 # Copy the rest of the application code to the root directory
 COPY . .
 
-# Expose the port your application runs on (if applicable)
-# EXPOSE 8000
+# Expose the port your application runs on - to pass health checks
+EXPOSE 8000
 
 # Set the command to run your application
 CMD ["python", "main.py"]
